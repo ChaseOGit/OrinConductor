@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+MODE="${1:-super}"
+
+# Find desktop user (Chase) and UID for GNOME Mutter DBus display control
+XUSER=$(who | awk '{print $1; exit}')
+XUSER="${XUSER:-Chase}"
+XUID=$(id -u "$XUSER" 2>/dev/null || echo 1000)
+DBUS_ADDR="unix:path=/run/user/$XUID/bus"
+
+if [ "$MODE" = "eco" ]; then
+  echo "[eco] 1. Unloading LLM from GPU..."
+  pkill -x llama-server || true
+
+  echo "[eco] 2. Lowering CPU & GPU clocks to minimum idle (no reboot required)..."
+  for cpu in /sys/devices/system/cpu/cpu[0-9]*; do
+    if [ -e "$cpu/cpufreq/cpuinfo_min_freq" ]; then
+      MIN_F=$(cat "$cpu/cpufreq/cpuinfo_min_freq")
+      echo "$MIN_F" > "$cpu/cpufreq/scaling_min_freq" 2>/dev/null || true
+      echo "$MIN_F" > "$cpu/cpufreq/scaling_max_freq" 2>/dev/null || true
+    fi
+  done
+  for df in /sys/class/devfreq/*; do
+    if [ -e "$df/available_frequencies" ]; then
+      MIN_DF=$(awk '{print $1}' "$df/available_frequencies")
+      echo "$MIN_DF" > "$df/min_freq" 2>/dev/null || true
+      echo "$MIN_DF" > "$df/max_freq" 2>/dev/null || true
+    fi
+  done
+
+  echo "[eco] 3. Silencing fan (unlocking pwm1 & thermal cooling_device)..."
+  systemctl stop nvfancontrol 2>/dev/null || true
+  for cd in /sys/class/thermal/cooling_device*; do
+    if grep -qi "fan" "$cd/type" 2>/dev/null; then
+      echo 1 > "$cd/cur_state" 2>/dev/null || true
+    fi
+  done
+  for pwm in /sys/class/hwmon/hwmon*/pwm1 /sys/devices/platform/pwm-fan/hwmon/hwmon*/pwm1; do
+    if [ -e "$pwm" ]; then
+      echo 1 > "${pwm}_enable" 2>/dev/null || true
+      echo 40 > "$pwm" 2>/dev/null || true
+    fi
+  done
+
+  echo "[eco] 4. Turning monitor OFF via GNOME Mutter DBus PowerSaveMode..."
+  sudo -u "$XUSER" DBUS_SESSION_BUS_ADDRESS="$DBUS_ADDR" \
+    busctl --user set-property org.gnome.Mutter.DisplayConfig \
+    /org/gnome/Mutter/DisplayConfig org.gnome.Mutter.DisplayConfig PowerSaveMode i 3 2>/dev/null || true
+  echo "[eco] Done! Orin is now in quiet Low-Power Eco Sleep."
+
+else
+  echo "[super] 1. Waking monitor ON via GNOME Mutter DBus PowerSaveMode..."
+  sudo -u "$XUSER" DBUS_SESSION_BUS_ADDRESS="$DBUS_ADDR" \
+    busctl --user set-property org.gnome.Mutter.DisplayConfig \
+    /org/gnome/Mutter/DisplayConfig org.gnome.Mutter.DisplayConfig PowerSaveMode i 0 2>/dev/null || true
+
+  echo "[super] 2. Restoring full MAXN CPU & GPU clocks..."
+  for cpu in /sys/devices/system/cpu/cpu[0-9]*; do
+    if [ -e "$cpu/cpufreq/cpuinfo_max_freq" ]; then
+      MAX_F=$(cat "$cpu/cpufreq/cpuinfo_max_freq")
+      echo "$MAX_F" > "$cpu/cpufreq/scaling_max_freq" 2>/dev/null || true
+      echo "$MAX_F" > "$cpu/cpufreq/scaling_min_freq" 2>/dev/null || true
+    fi
+  done
+  for df in /sys/class/devfreq/*; do
+    if [ -e "$df/available_frequencies" ]; then
+      MAX_DF=$(awk '{print $NF}' "$df/available_frequencies")
+      echo "$MAX_DF" > "$df/max_freq" 2>/dev/null || true
+    fi
+  done
+
+  echo "[super] 3. Enabling automatic temperature-controlled fan (nvfancontrol)..."
+  systemctl start nvfancontrol 2>/dev/null || true
+  echo "[super] Done! Orin is in MAXN Super Mode."
+fi
