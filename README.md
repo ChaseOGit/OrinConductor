@@ -1,4 +1,4 @@
-# ⚡ OrinConductor & OrinNative Linux/Vulkan Layer
+# OrinConductor & OrinNative Linux/Vulkan Layer
 
 **Autonomous Edge-to-Cloud AI Systems Orchestrator & Native AArch64 / Vulkan 1.4 Runtime Port on NVIDIA Jetson AGX Orin 32GB**
 
@@ -9,7 +9,7 @@
 
 ---
 
-## 📌 Overview
+## Overview
 
 Built on an **NVIDIA Jetson AGX Orin 32GB** (8x Cortex-A78AE, 1792-core Ampere `GA10B` GPU, L4T 595.78 / Vulkan 1.4), this repository showcases two integrated engineering systems:
 
@@ -20,7 +20,7 @@ Built on an **NVIDIA Jetson AGX Orin 32GB** (8x Cortex-A78AE, 1792-core Ampere `
 
 ---
 
-## 🏗️ Architecture: 3-Strike Local Qwen (CUDA) → Cloud Carbon/Argon Loop
+## Architecture: 3-Strike Local Qwen (CUDA) → Cloud Carbon/Argon Loop
 
 ```mermaid
 flowchart TD
@@ -36,7 +36,7 @@ flowchart TD
 
 ---
 
-## 📊 Key Engineering Metrics & Benchmarks
+## Key Engineering Metrics & Benchmarks
 
 | Subsystem / Metric | Result on Jetson AGX Orin 32GB |
 | :--- | :--- |
@@ -48,7 +48,7 @@ flowchart TD
 
 ---
 
-## 🔬 Deep-Dive Engineering Case Studies
+## Engineering Case Studies
 
 1. **AArch64 `tpidr_el0` TLS Slotting & Static Binary Layout (`linux_port/plat_linux.c`, `Makefile`):**
    Resolved guest-vs-`glibc` ARMv8 `tpidr_el0` Thread-Local Storage register collisions via `+16` byte TLS slot alignment, `pthread_t + 0xd0` / `SYS_gettid` resolution, and `-fno-pie -no-pie` deterministic address mapping.
@@ -59,7 +59,7 @@ flowchart TD
 
 ---
 
-## 📂 Repository Layout
+## Repository Layout
 
 * `orin_conductor.py` — v4 Autonomous Orchestrator, Tool Loop, TPM Compactor & Mobile Web Studio (`:7860`)
 * `launch_game.sh` — Incremental build, shader packer & headless `Xorg :0` launcher
@@ -68,5 +68,3 @@ flowchart TD
 * `scripts/` — Local `llama-server` Qwen 35B CUDA launcher (`start_llm.sh`), `orin-power-mode`, and `build_safe.sh`
 * `systemd/` — Self-healing `orin-conductor.service` unit
 
-## 👤 Author
-**Chase Oswalt** — [chaseogit.github.io](https://chaseogit.github.io) | [@chaseogit](https://github.com/chaseogit)
